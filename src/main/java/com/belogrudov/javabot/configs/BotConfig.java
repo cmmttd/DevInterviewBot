@@ -26,5 +26,4 @@ public class BotConfig {
         bot.setBotToken(botToken);
         return bot;
     }
-
 }

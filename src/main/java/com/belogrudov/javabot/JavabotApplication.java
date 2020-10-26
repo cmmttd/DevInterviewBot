@@ -25,5 +25,4 @@ public class JavabotApplication {
         }
         SpringApplication.run(JavabotApplication.class, args);
     }
-
 }

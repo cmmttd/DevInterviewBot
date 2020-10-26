@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  postgres:
+    container_name: postgres-db
+    image: postgres
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_PASSWORD=pass
+    volumes:
+    - $PWD/src/main/resources/val/:/docker-entrypoint-initdb.d/
+
