@@ -21,6 +21,7 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation('org.postgresql:postgresql')
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
@@ -29,7 +30,6 @@ dependencies {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
 
-    implementation('org.postgresql:postgresql')
     compile group: 'org.telegram', name: 'telegrambots-spring-boot-starter', version: '4.4.0.2'
     compile group: 'org.telegram', name: 'telegrambots', version: '4.9.1'
 

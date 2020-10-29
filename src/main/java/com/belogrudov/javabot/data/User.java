@@ -16,21 +16,17 @@ public class User {
     Long id;
     Long chatId;
     String name;
+    @Column(name = "current_q_id")
+    Long currentQId;
+    String history;
 
     protected User() {
     }
 
-    public User(Long chatId, String name) {
+    public User(Long chatId, String name, Long currentQId, String history) {
         this.chatId = chatId;
         this.name = name;
-    }
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", chatId=" + chatId +
-                ", name='" + name + '\'' +
-                '}';
+        this.currentQId = currentQId;
+        this.history = history;
     }
 }

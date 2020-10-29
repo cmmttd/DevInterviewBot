@@ -4,5 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RepoInterface extends JpaRepository<User, Long> {
+public interface UsersTable extends JpaRepository<User, Long> {
+    Boolean existsByChatId(Long chatId);
+
+    User findByChatId(Long chatId);
+
 }
