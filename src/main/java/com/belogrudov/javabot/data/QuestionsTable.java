@@ -9,5 +9,5 @@ import javax.validation.constraints.NotNull;
 import java.util.Optional;
 
 @Repository
-public interface QuestionsTable extends JpaRepository<Question, Long> {
+public interface QuestionsTable extends JpaRepository<Question, Integer> {
 }

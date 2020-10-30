@@ -3,15 +3,18 @@ create table users
     id           serial primary key,
     chat_id      bigint UNIQUE NOT NULL,
     name         varchar(32)   NOT NULL,
-    current_q_id int default 0,
-    history      text default ''
+    current_q_id int default 0
 );
-insert into users (chat_id, name)
-values (1234567890, 'TestUser');
+
+create table user_history_array
+(
+    id            serial primary key,
+    history_array integer
+);
 
 create table questions
 (
-    id          serial primary key,
+    id          smallserial primary key,
     question    text,
     description text
 );

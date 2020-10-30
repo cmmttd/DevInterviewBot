@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -13,20 +14,21 @@ import javax.persistence.*;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+    Integer id;
     Long chatId;
     String name;
     @Column(name = "current_q_id")
-    Long currentQId;
-    String history;
+    Integer currentQId;
+    @ElementCollection(fetch = FetchType.EAGER)
+    List<Integer> historyArray;
 
     protected User() {
     }
 
-    public User(Long chatId, String name, Long currentQId, String history) {
+    public User(Long chatId, String name, Integer currentQId, List<Integer> historyArray) {
         this.chatId = chatId;
         this.name = name;
         this.currentQId = currentQId;
-        this.history = history;
+        this.historyArray = historyArray;
     }
 }

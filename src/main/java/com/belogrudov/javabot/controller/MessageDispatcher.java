@@ -4,6 +4,7 @@ import com.belogrudov.javabot.data.Question;
 import com.belogrudov.javabot.data.QuestionsTable;
 import com.belogrudov.javabot.data.User;
 import com.belogrudov.javabot.data.UsersTable;
+import com.belogrudov.javabot.utils.RandomUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -15,13 +16,14 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static com.belogrudov.javabot.enums.Constants.*;
 
+/**
+ * MessageDispatcher worked with update's content
+ */
 @Slf4j
 public class MessageDispatcher {
 
@@ -40,6 +42,73 @@ public class MessageDispatcher {
         maxQNumber = questionsTable.findAll().size();
     }
 
+    /**
+     * Main method produce message for four ways:
+     * next
+     * statistics
+     * reset
+     * info
+     *
+     * @param chatId
+     * @param messageText
+     * @return Message instance for answer
+     */
+    public SendMessage getResponseByRegularMessage(Long chatId, String messageText) {
+        SendMessage outMessage = new SendMessage().setChatId(chatId);
+        User user = usersTable.findByChatId(chatId);
+        Integer currentQId = user.getCurrentQId();
+        List<Integer> historyArray = new ArrayList<>(usersTable.findByChatId(chatId).getHistoryArray());
+        String text = null;
+        ReplyKeyboard keyboard;
+
+        switch (messageText) {
+            case "/next":
+                currentQId = RandomUtil.inRangeExcludeList(1, maxQNumber, historyArray);
+                System.out.println(currentQId);
+                if (currentQId == 0) {
+                    text = THATS_ALL.getValue();
+                    text += String.format("%nCurrent progress: %.1f%%", historyArray.size() * 100.0 / maxQNumber);
+                    keyboard = getDefaultKeyboard();
+                } else {
+                    Question question = questionsTable.findById(currentQId).get();
+                    historyArray.add(currentQId);
+                    text = question.getQuestion();
+                    keyboard = getInlineKeyboard(new String[][]{{"Show description"}});
+                }
+                break;
+            case "/statistics":
+                text = String.format("Current progress: %.1f%%", historyArray.size() * 100.0 / maxQNumber);
+                keyboard = getDefaultKeyboard();
+                break;
+            case "/reset":
+                historyArray = Collections.emptyList();
+                text = RESET_SUCCESSFUL.getValue();
+                keyboard = getDefaultKeyboard();
+                break;
+            case "/info":
+                text = INFO_MESSAGE.getValue().replaceAll("\\{name}", user.getName());
+                keyboard = getDefaultKeyboard();
+                break;
+            default:
+                text = BAD_REQUEST.getValue();
+                keyboard = getDefaultKeyboard();
+        }
+
+        user.setCurrentQId(currentQId);
+        user.setHistoryArray(historyArray);
+        usersTable.save(user);
+        outMessage.setReplyMarkup(keyboard);
+        outMessage.setText(text);
+        return outMessage;
+    }
+
+    /**
+     * Callback always work after showing the question
+     *
+     * @param chatId
+     * @param messageText
+     * @return
+     */
     public SendMessage getResponseByCallback(Long chatId, String messageText) {
         SendMessage outMessage = new SendMessage().setChatId(chatId).setReplyMarkup(getDefaultKeyboard());
         User user = usersTable.findByChatId(chatId);
@@ -55,62 +124,12 @@ public class MessageDispatcher {
         return outMessage;
     }
 
-    public SendMessage getResponseByRegularMessage(Long chatId, String messageText) {
-        SendMessage outMessage = new SendMessage().setChatId(chatId);
-        User user = usersTable.findByChatId(chatId);
-        Long currentQId = user.getCurrentQId();
-        String historyArray = usersTable.findByChatId(chatId).getHistory();
-        List<Integer> historyQs = Arrays.stream(historyArray.split(";"))
-                .filter(x -> x.matches(".+;.+"))
-                .map(Integer::valueOf)
-                .collect(Collectors.toList());
-        String text = null;
-        ReplyKeyboard keyboard;
-
-        switch (messageText) {
-            case "/next":
-                Set<Long> set = IntStream
-                        .rangeClosed(1, maxQNumber)
-                        .filter(x -> !historyQs.contains(x))
-                        .asLongStream()
-                        .boxed()
-                        .collect(Collectors.toSet());
-                currentQId = set.parallelStream().findAny().get();
-                Question question = questionsTable.findById(currentQId).get();
-                historyArray += historyArray.isEmpty() ? currentQId : ";" + currentQId;
-                text = question.getQuestion();
-                keyboard = getInlineKeyboard(new String[][]{{"Show description"}});
-                break;
-            case "/statistics":
-                int currQNumber = historyQs
-                        .stream()
-                        .reduce(Integer::sum)
-                        .orElse(0);
-                text = String.format("Current progress: %.1f%%", currQNumber * 100.0 / maxQNumber);
-                keyboard = getDefaultKeyboard();
-                break;
-            case "/reset":
-                historyArray = "";
-                text = RESET_SUCCESSFUL.getValue();
-                keyboard = getDefaultKeyboard();
-                break;
-            case "/info":
-                text = INFO_MESSAGE.getValue();
-                keyboard = getDefaultKeyboard();
-                break;
-            default:
-                text = BAD_REQUEST.getValue();
-                keyboard = getDefaultKeyboard();
-        }
-
-        user.setCurrentQId(currentQId);
-        user.setHistory(historyArray);
-        usersTable.save(user);
-        outMessage.setReplyMarkup(keyboard);
-        outMessage.setText(text);
-        return outMessage;
-    }
-
+    /**
+     * Inline keyboard - buttons below questions
+     *
+     * @param strings
+     * @return
+     */
     private InlineKeyboardMarkup getInlineKeyboard(String[][] strings) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
@@ -129,15 +148,12 @@ public class MessageDispatcher {
         return inlineKeyboardMarkup;
     }
 
-    private ReplyKeyboardMarkup getDefaultKeyboard() {
-        return getKeyboard(new String[][]{
-                {"/next"},
-                {"/statistics"},
-                {"/reset"},
-                {"/info"}
-        });
-    }
-
+    /**
+     * Standart keyboard, instead regular qwerty
+     *
+     * @param strings
+     * @return
+     */
     private ReplyKeyboardMarkup getKeyboard(String[][] strings) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         List<KeyboardRow> rowList = new ArrayList<>();
@@ -154,13 +170,39 @@ public class MessageDispatcher {
         return keyboardMarkup;
     }
 
+    /**
+     * Default regular keyboard
+     *
+     * @return
+     */
+    private ReplyKeyboardMarkup getDefaultKeyboard() {
+        return getKeyboard(new String[][]{
+                {"/next"},
+                {"/statistics"},
+                {"/reset"},
+                {"/info"}
+        });
+    }
+
+    /**
+     * Register in db through spring data
+     *
+     * @param chatId
+     * @param userName
+     */
+    public void registerIfAbsent(Long chatId, String userName) {
+        if (usersTable.existsByChatId(chatId)) return;
+        else usersTable.save(new User(chatId, userName, 0, new ArrayList<>()));
+    }
+
+    /**
+     *
+     * @param chatId
+     * @param name
+     * @return
+     */
     public SendMessage getWelcomeMessage(Long chatId, String name) {
         return new SendMessage(chatId, WELCOME_MESSAGE.getValue().replaceAll("\\{name}", name))
                 .setReplyMarkup(getDefaultKeyboard());
-    }
-
-    public void registerIfAbsent(Long chatId, String userName) {
-        if (usersTable.existsByChatId(chatId)) return;
-        else usersTable.save(new User(chatId, userName, 0L, ""));
     }
 }
