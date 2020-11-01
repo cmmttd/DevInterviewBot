@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    platform: postgres
+    username: postgres
+    password: pass
+  jpa:
+    database: postgresql
+    show-sql: true
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+---
+spring:
+  profiles: default
+  datasource:
+    url: jdbc:postgresql://localhost:5433/postgres
+---
+spring:
+  profiles: production
+  datasource:
+    url: jdbc:postgresql://postgres-db/postgres

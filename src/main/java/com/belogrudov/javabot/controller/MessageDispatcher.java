@@ -5,6 +5,8 @@ import com.belogrudov.javabot.data.QuestionsTable;
 import com.belogrudov.javabot.data.User;
 import com.belogrudov.javabot.data.UsersTable;
 import com.belogrudov.javabot.utils.RandomUtil;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -13,7 +15,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,21 +26,17 @@ import static com.belogrudov.javabot.enums.Constants.*;
  * MessageDispatcher worked with update's content
  */
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class MessageDispatcher {
 
     final UsersTable usersTable;
     final QuestionsTable questionsTable;
 
-    static int maxQNumber;
+    public static int maxQNumber;
 
     public MessageDispatcher(UsersTable usersTable, QuestionsTable questionsTable) {
         this.usersTable = usersTable;
         this.questionsTable = questionsTable;
-    }
-
-    @PostConstruct
-    void init() {
-        maxQNumber = questionsTable.findAll().size();
     }
 
     /**
@@ -64,20 +61,25 @@ public class MessageDispatcher {
         switch (messageText) {
             case "/next":
                 currentQId = RandomUtil.inRangeExcludeList(1, maxQNumber, historyArray);
-                System.out.println(currentQId);
                 if (currentQId == 0) {
                     text = THATS_ALL.getValue();
-                    text += String.format("%nCurrent progress: %.1f%%", historyArray.size() * 100.0 / maxQNumber);
+                    text += String.format("Current progress: %.1f%% (%d/%d)",
+                            historyArray.size() * 100.0 / maxQNumber,
+                            historyArray.size(),
+                            maxQNumber);
                     keyboard = getDefaultKeyboard();
                 } else {
                     Question question = questionsTable.findById(currentQId).get();
                     historyArray.add(currentQId);
                     text = question.getQuestion();
-                    keyboard = getInlineKeyboard(new String[][]{{"Show description"}});
+                    keyboard = getInlineKeyboard(new String[][]{{"Expand description"}});
                 }
                 break;
             case "/statistics":
-                text = String.format("Current progress: %.1f%%", historyArray.size() * 100.0 / maxQNumber);
+                text = String.format("Current progress: %.1f%% (%d/%d)",
+                        historyArray.size() * 100.0 / maxQNumber,
+                        historyArray.size(),
+                        maxQNumber);
                 keyboard = getDefaultKeyboard();
                 break;
             case "/reset":
@@ -99,6 +101,8 @@ public class MessageDispatcher {
         usersTable.save(user);
         outMessage.setReplyMarkup(keyboard);
         outMessage.setText(text);
+        outMessage.enableMarkdown(true);
+        outMessage.disableWebPagePreview();
         return outMessage;
     }
 
@@ -110,17 +114,21 @@ public class MessageDispatcher {
      * @return
      */
     public SendMessage getResponseByCallback(Long chatId, String messageText) {
-        SendMessage outMessage = new SendMessage().setChatId(chatId).setReplyMarkup(getDefaultKeyboard());
+        SendMessage outMessage = new SendMessage().setChatId(chatId);
         User user = usersTable.findByChatId(chatId);
         Question question = questionsTable.findById(user.getCurrentQId()).get();
         String text = null;
+        ReplyKeyboardMarkup keyboard = getDefaultKeyboard();
 
-        if ("Show description".equals(messageText)) {
+        if ("Expand description".equals(messageText)) {
             text = question.getDescription();
+            keyboard.setOneTimeKeyboard(true);
         } else {
             text = BAD_REQUEST.getValue();
         }
         outMessage.setText(text);
+        outMessage.setReplyMarkup(keyboard);
+        outMessage.enableMarkdown(true);
         return outMessage;
     }
 
@@ -196,7 +204,6 @@ public class MessageDispatcher {
     }
 
     /**
-     *
      * @param chatId
      * @param name
      * @return
