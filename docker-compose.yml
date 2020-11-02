@@ -11,9 +11,9 @@ services:
     volumes:
     - $PWD/src/main/resources/val/:/docker-entrypoint-initdb.d/
 
-#  java-app:
-#    container_name: java-app
-#    image: cmmttd/dev-interview-bot
-#    environment:
-#      - BOT_TOKEN=${BOT_TOKEN_QUESTIONS}
-#      - BOT_USERNAME=${BOT_USERNAME_QUESTIONS}
+  java-app:
+    container_name: java-app
+    image: cmmttd/dev-interview-bot
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN_QUESTIONS}
+      - BOT_USERNAME=${BOT_USERNAME_QUESTIONS}
