@@ -19,10 +19,7 @@ public class RandomUtil {
     }
 
     public static int in(List<Integer> list) {
-        return list.get(new Random()
-                .ints(0, list.size())
-                .findAny()
-                .getAsInt());
+        return list.get(in(0, list.size()));
     }
 
     /**

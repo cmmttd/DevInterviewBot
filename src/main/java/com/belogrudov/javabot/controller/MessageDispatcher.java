@@ -56,43 +56,45 @@ public class MessageDispatcher {
         Integer currentQId = user.getCurrentQId();
         List<Integer> historyArray = new ArrayList<>(usersTable.findByChatId(chatId).getHistoryArray());
         String text = null;
+        String statistic = String.format("Current progress: %.1f%% (%d/%d)",
+                historyArray.size() * 100.0 / maxQNumber,
+                historyArray.size(),
+                maxQNumber);
         ReplyKeyboard keyboard;
 
         switch (messageText) {
+            case "Next":
             case "/next":
                 currentQId = RandomUtil.inRangeExcludeList(1, maxQNumber, historyArray);
                 if (currentQId == 0) {
-                    text = THATS_ALL.getValue();
-                    text += String.format("Current progress: %.1f%% (%d/%d)",
-                            historyArray.size() * 100.0 / maxQNumber,
-                            historyArray.size(),
-                            maxQNumber);
+                    text = THATS_ALL.toString();
+                    text += statistic;
                     keyboard = getDefaultKeyboard();
                 } else {
                     Question question = questionsTable.findById(currentQId).get();
                     historyArray.add(currentQId);
                     text = question.getQuestion();
-                    keyboard = getInlineKeyboard(new String[][]{{"Expand description"}});
+                    keyboard = getInlineKeyboard(new String[][]{{"Skip", "Expand description"}});
                 }
                 break;
+            case "Statistics":
             case "/statistics":
-                text = String.format("Current progress: %.1f%% (%d/%d)",
-                        historyArray.size() * 100.0 / maxQNumber,
-                        historyArray.size(),
-                        maxQNumber);
+                text = statistic;
                 keyboard = getDefaultKeyboard();
                 break;
+            case "Reset":
             case "/reset":
                 historyArray = Collections.emptyList();
-                text = RESET_SUCCESSFUL.getValue();
+                text = RESET_SUCCESSFUL.toString();
                 keyboard = getDefaultKeyboard();
                 break;
+            case "Info":
             case "/info":
-                text = INFO_MESSAGE.getValue().replaceAll("\\{name}", user.getName());
+                text = INFO_MESSAGE.toString().replaceAll("\\{name}", user.getName());
                 keyboard = getDefaultKeyboard();
                 break;
             default:
-                text = BAD_REQUEST.getValue();
+                text = BAD_REQUEST.toString();
                 keyboard = getDefaultKeyboard();
         }
 
@@ -118,13 +120,19 @@ public class MessageDispatcher {
         User user = usersTable.findByChatId(chatId);
         Question question = questionsTable.findById(user.getCurrentQId()).get();
         String text = null;
-        ReplyKeyboardMarkup keyboard = getDefaultKeyboard();
+        ReplyKeyboard keyboard = getDefaultKeyboard();
 
-        if ("Expand description".equals(messageText)) {
-            text = question.getDescription();
-            keyboard.setOneTimeKeyboard(true);
-        } else {
-            text = BAD_REQUEST.getValue();
+        switch (messageText) {
+            case "Expand description":
+                text = question.getDescription();
+                break;
+            case "Skip":
+                SendMessage response = getResponseByRegularMessage(chatId, "/next");
+                text = response.getText();
+                keyboard = response.getReplyMarkup();
+                break;
+            default:
+                text = BAD_REQUEST.toString();
         }
         outMessage.setText(text);
         outMessage.setReplyMarkup(keyboard);
@@ -185,10 +193,10 @@ public class MessageDispatcher {
      */
     private ReplyKeyboardMarkup getDefaultKeyboard() {
         return getKeyboard(new String[][]{
-                {"/next"},
-                {"/statistics"},
-                {"/reset"},
-                {"/info"}
+                {"Next"},
+                {"Statistics"},
+                {"Reset"},
+                {"Info"}
         });
     }
 
@@ -209,7 +217,7 @@ public class MessageDispatcher {
      * @return
      */
     public SendMessage getWelcomeMessage(Long chatId, String name) {
-        return new SendMessage(chatId, WELCOME_MESSAGE.getValue().replaceAll("\\{name}", name))
+        return new SendMessage(chatId, WELCOME_MESSAGE.toString().replaceAll("\\{name}", name))
                 .setReplyMarkup(getDefaultKeyboard());
     }
 }

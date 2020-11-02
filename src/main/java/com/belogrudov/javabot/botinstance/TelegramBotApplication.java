@@ -24,11 +24,18 @@ public class TelegramBotApplication extends TelegramLongPollingBot {
     @Setter
     String botName;
 
+    //TODO: cleanup by rate
+    //local users cache
     static ConcurrentHashMap<Long, LocalDate> users = new ConcurrentHashMap<>();
 
     @Autowired
     MessageDispatcher messageDispatcher;
 
+    /**
+     * Implements Telegram API method
+     * Method intercepts updates with callback and normal message
+     * @param update
+     */
     @SneakyThrows
     @Override
     public void onUpdateReceived(Update update) {
@@ -56,7 +63,7 @@ public class TelegramBotApplication extends TelegramLongPollingBot {
             String userName = Optional.ofNullable(message.getFrom().getUserName())
                     .orElse(message.getFrom().getFirstName() + " " + message.getFrom().getLastName());
 
-            //routing by message
+            //routing by request
             if (hasCallback) {
                 execute(messageDispatcher.getResponseByCallback(chatId, data));
             } else if (!users.containsKey(chatId)) {

@@ -13,7 +13,8 @@ public enum Constants {
         this.value = s;
     }
 
-    public String getValue() {
+    @Override
+    public String toString() {
         return this.value;
     }
 }

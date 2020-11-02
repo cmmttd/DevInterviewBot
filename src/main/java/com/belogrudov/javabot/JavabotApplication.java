@@ -39,6 +39,7 @@ public class JavabotApplication {
 
     @PostConstruct
     public void init() {
+        //TODO: make filling the database more flexible for online updating
 //        filesUtil.fillingDB();
         MessageDispatcher.maxQNumber = questionsTable.findAll().size();
     }
