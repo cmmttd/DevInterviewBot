@@ -26,7 +26,7 @@ public class TelegramBotApplication extends TelegramLongPollingBot {
 
     //TODO: cleanup by rate
     //local users cache
-    static ConcurrentHashMap<Long, LocalDate> users = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<Long, LocalDate> users = new ConcurrentHashMap<>();
 
     @Autowired
     MessageDispatcher messageDispatcher;
