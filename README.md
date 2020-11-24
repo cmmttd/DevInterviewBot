@@ -16,6 +16,6 @@ Create your own 'Helloworld' bot:
 $ git clone -b minimal-bot https://github.com/cmmttd/DevInterviewBot.git
 $ export BOT_TOKEN=your_token
 $ export BOT_USERNAME=your_name
-gradle build
+$ gradle build
 $ java -jar /build/libs/javabot-0.0.1.jar
 ```
