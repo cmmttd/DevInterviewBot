@@ -3,11 +3,25 @@
 
 [Content source](https://github.com/enhorse/java-interview/)
 
-Run local:
+Some of the code looks like crap, sorry.
+Feel free to rise PR or someday I'll redo it)
+
+How to run:
 ```shell
 $ git clone https://github.com/cmmttd/DevInterviewBot.git
 $ export BOT_TOKEN_QUESTIONS=your_token
-$ export BOT_USERNAME_QUESTIONS=your_name
+$ export BOT_NAME_QUESTIONS=your_bot_name
+$ docker-compose up -d
+```
+
+How to build:
+```shell
+$ git clone https://github.com/cmmttd/DevInterviewBot.git
+$ mvn install
+$ docker build -t {your_app_name} .
+$ export BOT_TOKEN=your_token
+$ export BOT_NAME=your_bot_name
+(change docker-compose image name from "cmmttd/dev-interview-bot:latest" to {your_app_name})
 $ docker-compose up -d
 ```
 

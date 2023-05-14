@@ -1,10 +1,9 @@
 package com.belogrudov.javabot.data;
 
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
-
-import javax.persistence.*;
 
 @Entity
 @Table(name = "questions")
@@ -15,7 +14,11 @@ public class Question {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
+
+    @Column(columnDefinition = "text")
     String question;
+
+    @Column(columnDefinition = "text")
     String description;
 
     public Question() {

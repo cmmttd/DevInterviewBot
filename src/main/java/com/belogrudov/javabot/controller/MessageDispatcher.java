@@ -1,13 +1,14 @@
 package com.belogrudov.javabot.controller;
 
 import com.belogrudov.javabot.data.Question;
-import com.belogrudov.javabot.data.QuestionsTable;
+import com.belogrudov.javabot.data.QuestionsRepo;
 import com.belogrudov.javabot.data.User;
-import com.belogrudov.javabot.data.UsersTable;
+import com.belogrudov.javabot.data.UsersRepo;
 import com.belogrudov.javabot.utils.RandomUtil;
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
@@ -23,20 +24,22 @@ import java.util.List;
 import static com.belogrudov.javabot.enums.Constants.*;
 
 /**
- * MessageDispatcher worked with update's content
+ * MessageDispatcher works with update's content
  */
 @Slf4j
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Component
+@RequiredArgsConstructor
 public class MessageDispatcher {
 
-    final UsersTable usersTable;
-    final QuestionsTable questionsTable;
+    private final UsersRepo usersRepo;
+    private final QuestionsRepo questionsRepo;
 
     public static int maxQNumber;
 
-    public MessageDispatcher(UsersTable usersTable, QuestionsTable questionsTable) {
-        this.usersTable = usersTable;
-        this.questionsTable = questionsTable;
+    // TODO: 14/05/2023 Need to fix workaround
+    @PostConstruct
+    void init() {
+        maxQNumber = questionsRepo.findAll().size();
     }
 
     /**
@@ -51,10 +54,9 @@ public class MessageDispatcher {
      * @return Message instance for answer
      */
     public SendMessage getResponseByRegularMessage(Long chatId, String messageText) {
-        SendMessage outMessage = new SendMessage().setChatId(chatId);
-        User user = usersTable.findByChatId(chatId);
+        User user = usersRepo.findByChatId(chatId);
         Integer currentQId = user.getCurrentQId();
-        List<Integer> historyArray = new ArrayList<>(usersTable.findByChatId(chatId).getHistoryArray());
+        List<Integer> historyArray = new ArrayList<>(usersRepo.findByChatId(chatId).getHistoryArray());
         String text = null;
         String statistic = String.format("Current progress: %.1f%% (%d/%d)",
                 historyArray.size() * 100.0 / maxQNumber,
@@ -71,7 +73,7 @@ public class MessageDispatcher {
                     text += statistic;
                     keyboard = getDefaultKeyboard();
                 } else {
-                    Question question = questionsTable.findById(currentQId).get();
+                    Question question = questionsRepo.findById(currentQId).get();
                     historyArray.add(currentQId);
                     text = question.getQuestion();
                     keyboard = getInlineKeyboard(new String[][]{{"Skip", "Expand description"}});
@@ -100,12 +102,15 @@ public class MessageDispatcher {
 
         user.setCurrentQId(currentQId);
         user.setHistoryArray(historyArray);
-        usersTable.save(user);
-        outMessage.setReplyMarkup(keyboard);
-        outMessage.setText(text);
-        outMessage.enableMarkdown(true);
-        outMessage.disableWebPagePreview();
-        return outMessage;
+        usersRepo.save(user);
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId)
+                .replyMarkup(keyboard)
+                .text(text)
+                .build();
+        sendMessage.enableMarkdown(true);
+        sendMessage.disableWebPagePreview();
+        return sendMessage;
     }
 
     /**
@@ -116,9 +121,8 @@ public class MessageDispatcher {
      * @return
      */
     public SendMessage getResponseByCallback(Long chatId, String messageText) {
-        SendMessage outMessage = new SendMessage().setChatId(chatId);
-        User user = usersTable.findByChatId(chatId);
-        Question question = questionsTable.findById(user.getCurrentQId()).get();
+        User user = usersRepo.findByChatId(chatId);
+        Question question = questionsRepo.findById(user.getCurrentQId()).get();
         String text = null;
         ReplyKeyboard keyboard = getDefaultKeyboard();
 
@@ -134,10 +138,13 @@ public class MessageDispatcher {
             default:
                 text = BAD_REQUEST.toString();
         }
-        outMessage.setText(text);
-        outMessage.setReplyMarkup(keyboard);
-        outMessage.enableMarkdown(true);
-        return outMessage;
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId)
+                .replyMarkup(keyboard)
+                .text(text)
+                .build();
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
     }
 
     /**
@@ -153,8 +160,10 @@ public class MessageDispatcher {
         for (String[] ss : strings) {
             List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
             for (String s : ss) {
-                InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
-                inlineKeyboardButton.setText(s).setCallbackData(s);
+                InlineKeyboardButton inlineKeyboardButton = InlineKeyboardButton.builder()
+                        .text(s)
+                        .callbackData(s)
+                        .build();
                 keyboardButtonsRow.add(inlineKeyboardButton);
             }
             rowList.add(keyboardButtonsRow);
@@ -207,8 +216,8 @@ public class MessageDispatcher {
      * @param userName
      */
     public void registerIfAbsent(Long chatId, String userName) {
-        if (usersTable.existsByChatId(chatId)) return;
-        else usersTable.save(new User(chatId, userName, 0, new ArrayList<>()));
+        if (usersRepo.existsByChatId(chatId)) return;
+        else usersRepo.save(new User(chatId, userName, 0, new ArrayList<>()));
     }
 
     /**
@@ -217,7 +226,10 @@ public class MessageDispatcher {
      * @return
      */
     public SendMessage getWelcomeMessage(Long chatId, String name) {
-        return new SendMessage(chatId, WELCOME_MESSAGE.toString().replaceAll("\\{name}", name))
-                .setReplyMarkup(getDefaultKeyboard());
+        return SendMessage.builder()
+                .chatId(chatId)
+                .replyMarkup(getDefaultKeyboard())
+                .text(WELCOME_MESSAGE.toString().replaceAll("\\{name}", name))
+                .build();
     }
 }
