@@ -15,6 +15,6 @@ services:
     environment:
       - "SPRING_PROFILES_ACTIVE=production"
       - BOT_TOKEN=${BOT_TOKEN_QUESTIONS}
-      - BOT_USERNAME=${BOT_NAME_QUESTIONS}
+      - BOT_NAME=${BOT_NAME_QUESTIONS}
     volumes:
       - $PWD/src/main/resources/content/:/usr/app/content/
