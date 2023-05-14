@@ -1,69 +1,111 @@
 package com.belogrudov.javabot.utils;
 
+import com.belogrudov.javabot.controller.MessageDispatcher;
 import com.belogrudov.javabot.data.Question;
-import com.belogrudov.javabot.data.QuestionsTable;
+import com.belogrudov.javabot.data.QuestionsRepo;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class FilesUtil {
 
-    @Autowired
-    QuestionsTable questionsTable;
+//    public static final String CONTENT_PATH = "src/main/resources/content/";
+    public static final String CONTENT_PATH = "/usr/app/content/";
+    private final QuestionsRepo questionsRepo;
 
-    @SneakyThrows
+    @Transactional
     public void fillingDB() {
-        //result questions pool
         List<Question> questions = new ArrayList<>();
+        List<Path> contentFiles = new ArrayList<>();
+        try (Stream<Path> stream = Files.walk(Paths.get(CONTENT_PATH), 1)) {
+            contentFiles = stream
+                    .filter(file -> !Files.isDirectory(file))
+                    .filter(file -> file.toString().endsWith("md"))
+                    .filter(file -> !file.toString().contains("README"))
+                    .toList();
+        } catch (IOException e) {
+            log.error("Can't update questions table", e);
+        }
+        questionsRepo.deleteAll();
+        for (Path file : contentFiles) {
+            Pair pair = new Pair(new StringBuilder(), new StringBuilder());
+            String[] lines = new String[0];
+            try {
+                lines = Files.readAllLines(file).toArray(String[]::new);
+            } catch (IOException e) {
+                log.error("File not reachable: {}", file, e);
+            }
 
-        HashMap<Path, String> contentMap = new HashMap<>();
-        String dir = "src/main/resources/content/";
-        contentMap.put(Paths.get(dir + "patterns.md"), "\\[к оглавлению]\\(#Шаблоны-проектирования\\)");
-        contentMap.put(Paths.get(dir + "jcf.md"), "\\[к оглавлению]\\(#java-collections-framework\\)");
-        contentMap.put(Paths.get(dir + "io.md"), "\\[к оглавлению]\\(#Потоки-вводавывода-в-java\\)");
-        contentMap.put(Paths.get(dir + "concurrency.md"), "\\[к оглавлению]\\(#Многопоточность\\)");
-        contentMap.put(Paths.get(dir + "serialization.md"), "\\[к оглавлению]\\(#Сериализация\\)");
-        contentMap.put(Paths.get(dir + "servlets.md"), "\\[к оглавлению]\\(#servlets-jsp-jstl\\)");
-        contentMap.put(Paths.get(dir + "log.md"), "\\[к оглавлению]\\(#Журналирование\\)");
-        contentMap.put(Paths.get(dir + "test.md"), "\\[к оглавлению]\\(#Тестирование\\)");
-        contentMap.put(Paths.get(dir + "db.md"), "\\[к оглавлению]\\(#Базы-данных\\)");
-        contentMap.put(Paths.get(dir + "core.md"), "\\[к оглавлению]\\(#java-core\\)");
-        contentMap.put(Paths.get(dir + "web.md"), "\\[к оглавлению]\\(#Основы-web\\)");
-        contentMap.put(Paths.get(dir + "java8.md"), "\\[к оглавлению]\\(#java-8\\)");
-        contentMap.put(Paths.get(dir + "jdbc.md"), "\\[к оглавлению]\\(#jdbc\\)");
-        contentMap.put(Paths.get(dir + "oop.md"), "\\[к оглавлению]\\(#ООП\\)");
-        contentMap.put(Paths.get(dir + "jvm.md"), "\\[к оглавлению]\\(#jvm\\)");
-        contentMap.put(Paths.get(dir + "xml.md"), "\\[к оглавлению]\\(#xml\\)");
-
-        for (Map.Entry<Path, String> file : contentMap.entrySet()) {
-            String fileContent = String.join("\n", Files.readAllLines(file.getKey()));
-            String[] split = fileContent.split(file.getValue());
-
-            for (String ss : split) {
-                StringBuilder key = new StringBuilder(),
-                        val = new StringBuilder();
-                for (String s : ss.split("\n")) {
-                    if (s.startsWith("##")) {
-                        key.append(s).append("\n");
+            for (String line : lines) {
+                String stripped = line.strip();
+                if (stripped.isEmpty() || stripped.contains("[к оглавлению]")) {
+                    continue;
+                }
+                if (stripped.contains("Источники")) {
+                    break;
+                }
+                if (stripped.startsWith("##")) {
+                    if (pair.getDescription().isEmpty()) {
+                        pair.getQuestion().append("\n");
+                        pair.getQuestion().append(stripped);
                     } else {
-                        val.append(s).append("\n");
+                        questionsRepo.save(new Question(pair.getQuestion().toString().strip(), pair.getDescription().toString().strip()));
+                        pair = new Pair(new StringBuilder(), new StringBuilder());
+                        pair.getQuestion().append(stripped);
+                    }
+                } else {
+                    if (!pair.getQuestion().isEmpty()) {
+                        pair.getDescription().append(stripped);
+                        pair.getDescription().append("\n");
                     }
                 }
-                questions.add(new Question(key.toString(), val.toString()));
             }
+//            questionsRepo.saveAll(questions);
+//            questions.clear();
         }
-        questionsTable.saveAll(questions);
-        questionsTable.flush();
+        questionsRepo.flush();
+        MessageDispatcher.maxQNumber = questionsRepo.findAll().size();
+    }
+
+    //    @Scheduled
+    @SneakyThrows
+    public void uploadContent() {
+        //tbd
+//        Files.deleteIfExists(CONTENT_PATH.toAbsolutePath());
+//        Files.createDirectory(CONTENT_PATH.toAbsolutePath());
+//        String path = CONTENT_PATH + "/temp.zip";
+//        try (FileOutputStream fileOutputStream = new FileOutputStream(path)) {
+//            fileOutputStream.getChannel()
+//                    .transferFrom(
+//                            Channels.newChannel(new URL("https://github.com/enhorse/java-interview/archive/refs/heads/master.zip").openStream()),
+//                            0, Long.MAX_VALUE);
+//        }
+//        try (ZipFile zipFile = new ZipFile(path)) {
+//            zipFile.extractAll(CONTENT_PATH.toString());
+//        } catch (ZipException e) {
+//            e.printStackTrace();
+//        }
+    }
+
+    @Data
+    @AllArgsConstructor
+    private static class Pair {
+        StringBuilder question;
+        StringBuilder description;
     }
 }

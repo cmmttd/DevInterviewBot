@@ -1,11 +1,13 @@
+telegram:
+  bot:
+    name: ${BOT_NAME}
+    token: ${BOT_TOKEN}
 spring:
   datasource:
-    platform: postgres
     username: postgres
     password: pass
   jpa:
     database: postgresql
-    show-sql: true
     generate-ddl: true
     hibernate:
       ddl-auto: update
@@ -14,13 +16,24 @@ spring:
         jdbc:
           lob:
             non_contextual_creation: true
+  sql:
+    init:
+      platform: postgres
 ---
 spring:
-  profiles: default
+  config:
+    activate:
+      on-profile: default
   datasource:
     url: jdbc:postgresql://localhost:5433/postgres
+  jpa:
+    show-sql: true
 ---
 spring:
-  profiles: production
+  config:
+    activate:
+      on-profile: production
   datasource:
     url: jdbc:postgresql://postgres-db/postgres
+  jpa:
+    show-sql: false

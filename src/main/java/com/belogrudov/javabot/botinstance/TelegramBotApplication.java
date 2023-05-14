@@ -1,13 +1,16 @@
 package com.belogrudov.javabot.botinstance;
 
+import com.belogrudov.javabot.configs.TelegramProps;
 import com.belogrudov.javabot.controller.MessageDispatcher;
-import lombok.AccessLevel;
-import lombok.Setter;
+import com.belogrudov.javabot.data.UsersRepo;
+import com.belogrudov.javabot.utils.FilesUtil;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -17,30 +20,38 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@Service
+@RequiredArgsConstructor
 public class TelegramBotApplication extends TelegramLongPollingBot {
-    @Setter
-    String botToken;
-    @Setter
-    String botName;
 
     //TODO: cleanup by rate
     //local users cache
     public static ConcurrentHashMap<Long, LocalDate> users = new ConcurrentHashMap<>();
 
-    @Autowired
-    MessageDispatcher messageDispatcher;
+    private final MessageDispatcher messageDispatcher;
+    private final TelegramBotsApi session;
+    private final TelegramProps props;
+    private final FilesUtil filesUtil;
+    private final UsersRepo usersRepo;
+
+    @SneakyThrows
+    @PostConstruct
+    void init() {
+        usersRepo.findAll().forEach(x -> TelegramBotApplication.users.put(x.getChatId(), LocalDate.now()));
+        filesUtil.fillingDB();
+        session.registerBot(this);
+    }
 
     /**
      * Implements Telegram API method
      * Method intercepts updates with callback and normal message
+     *
      * @param update
      */
     @SneakyThrows
     @Override
     public void onUpdateReceived(Update update) {
         log.info(update.toString() + "\n---");
-
         Message message = null;
         String data = null;
         boolean hasCallback = false,
@@ -79,11 +90,12 @@ public class TelegramBotApplication extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return botName;
+        return props.getName();
     }
 
+    // TODO: 01/05/2023 Need to replace old-fashioned way
     @Override
     public String getBotToken() {
-        return botToken;
+        return props.getToken();
     }
 }
