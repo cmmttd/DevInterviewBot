@@ -11,7 +11,7 @@ services:
 
   java-app:
     container_name: java-app
-    image: cmmttd/dev-interview-bot:latest
+    image: cmmttd/dev-interview-bot-arm:latest
     environment:
       - "SPRING_PROFILES_ACTIVE=production"
       - BOT_TOKEN=${BOT_TOKEN_QUESTIONS}
