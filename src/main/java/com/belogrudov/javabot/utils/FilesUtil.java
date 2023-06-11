@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +25,23 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class FilesUtil {
 
-//    public static final String CONTENT_PATH = "src/main/resources/content/";
-    public static final String CONTENT_PATH = "/usr/app/content/";
+    @Value("${telegram.content.path}")
+    private String contentPath;
+
     private final QuestionsRepo questionsRepo;
 
     @Transactional
     public void fillingDB() {
         List<Question> questions = new ArrayList<>();
         List<Path> contentFiles = new ArrayList<>();
-        try (Stream<Path> stream = Files.walk(Paths.get(CONTENT_PATH), 1)) {
+        try (Stream<Path> stream = Files.walk(Paths.get(contentPath), 1)) {
             contentFiles = stream
                     .filter(file -> !Files.isDirectory(file))
                     .filter(file -> file.toString().endsWith("md"))
                     .filter(file -> !file.toString().contains("README"))
                     .toList();
         } catch (IOException e) {
-            log.error("Can't update questions table", e);
+            log.error("Can't collect content files list", e);
         }
         questionsRepo.deleteAll();
         for (Path file : contentFiles) {
@@ -52,25 +54,24 @@ public class FilesUtil {
             }
 
             for (String line : lines) {
-                String stripped = line.strip();
-                if (stripped.isEmpty() || stripped.contains("[к оглавлению]")) {
+                if (line.isEmpty() || line.contains("[к оглавлению]")) {
                     continue;
                 }
-                if (stripped.contains("Источники")) {
+                if (line.contains("Источники")) {
                     break;
                 }
-                if (stripped.startsWith("##")) {
+                if (line.startsWith("##")) {
                     if (pair.getDescription().isEmpty()) {
                         pair.getQuestion().append("\n");
-                        pair.getQuestion().append(stripped);
+                        pair.getQuestion().append(line);
                     } else {
                         questionsRepo.save(new Question(pair.getQuestion().toString().strip(), pair.getDescription().toString().strip()));
                         pair = new Pair(new StringBuilder(), new StringBuilder());
-                        pair.getQuestion().append(stripped);
+                        pair.getQuestion().append(line);
                     }
                 } else {
                     if (!pair.getQuestion().isEmpty()) {
-                        pair.getDescription().append(stripped);
+                        pair.getDescription().append(line);
                         pair.getDescription().append("\n");
                     }
                 }

@@ -28,6 +28,9 @@ spring:
     url: jdbc:postgresql://localhost:5433/postgres
   jpa:
     show-sql: true
+telegram:
+  content:
+    path: 'src/main/resources/content/'
 ---
 spring:
   config:
@@ -37,3 +40,6 @@ spring:
     url: jdbc:postgresql://postgres-db/postgres
   jpa:
     show-sql: false
+telegram:
+  content:
+    path: '/usr/app/content/'
