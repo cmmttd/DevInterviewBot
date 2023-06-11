@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -76,7 +78,19 @@ public class TelegramBotApplication extends TelegramLongPollingBot {
 
             //routing by request
             if (hasCallback) {
-                execute(messageDispatcher.getResponseByCallback(chatId, data));
+                SendMessage responseByCallback = messageDispatcher.getResponseByCallback(chatId, data);
+                try {
+                    execute(responseByCallback);
+                } catch (TelegramApiException e) {
+                    try {
+                        responseByCallback.setParseMode("HTML");
+                        responseByCallback.setText("<pre>" + responseByCallback.getText() + "</pre>");
+                        execute(responseByCallback);
+                    } catch (TelegramApiException ee) {
+                        responseByCallback.enableMarkdown(false);
+                        execute(responseByCallback);
+                    }
+                }
             } else if (!users.containsKey(chatId)) {
                 users.put(chatId, LocalDate.now());
                 messageDispatcher.registerIfAbsent(chatId, userName);
